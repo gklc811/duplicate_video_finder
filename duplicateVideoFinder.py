@@ -9,12 +9,16 @@ from multiprocessing import Pool, cpu_count
 input_vid_dir = r'C:\Users\gokul\Documents\data\\'
 json_dir = r'C:\Users\gokul\Documents\db\\'
 analyzed_dir = r'C:\Users\gokul\Documents\analyzed\\'
+duplicate_dir = r'C:\Users\gokul\Documents\duplicate\\'
 
 if not path.exists(json_dir):
     makedirs(json_dir)
 
 if not path.exists(analyzed_dir):
     makedirs(analyzed_dir)
+
+if not path.exists(duplicate_dir):
+    makedirs(duplicate_dir)
 
 
 def write_to_json(filename, data):
@@ -42,7 +46,7 @@ def video_to_json(filename):
     stop = clock()
     time_taken = stop - start
     print("Time taken for ", file_full_path, " is : ", time_taken)
-    data_dict = {}
+    data_dict = dict()
     data_dict['size'] = size
     data_dict['time_taken'] = time_taken
     data_dict['fps'] = fps
@@ -61,7 +65,7 @@ def multiprocess_video_to_json():
     print(processes)
     pool = Pool(processes)
     start = clock()
-    test = pool.starmap_async(video_to_json, zip(files))
+    pool.starmap_async(video_to_json, zip(files))
     pool.close()
     pool.join()
     stop = clock()
@@ -69,11 +73,11 @@ def multiprocess_video_to_json():
 
 
 def key_with_max_val(d):
-    max = 0
+    max_value = 0
     required_key = ""
     for k in d:
-        if (d[k] > max):
-            max = d[k]
+        if d[k] > max_value:
+            max_value = d[k]
             required_key = k
     return required_key
 
@@ -81,31 +85,34 @@ def key_with_max_val(d):
 def duplicate_analyzer():
     files = next(walk(json_dir))[2]
     data_dict = {}
-    for filename in files:
-        filename = json_dir + filename
+    for file in files:
+        filename = json_dir + file
         with open(filename) as f:
             data = load(f)
         video_hash = data['video_hash']
         count = 0
-        duplicate_file = {}
+        duplicate_file_dict = dict()
         for key in video_hash:
             count += 1
-            if (key in data_dict):
-                if (data_dict[key] in duplicate_file):
-                    duplicate_file[data_dict[key]] = duplicate_file[data_dict[key]] + 1
+            if key in data_dict:
+                if data_dict[key] in duplicate_file_dict:
+                    duplicate_file_dict[data_dict[key]] = duplicate_file_dict[data_dict[key]] + 1
                 else:
-                    duplicate_file[data_dict[key]] = 1
+                    duplicate_file_dict[data_dict[key]] = 1
             else:
                 data_dict[key] = video_hash[key]
-        if (duplicate_file):
-            duplfile = key_with_max_val(duplicate_file)
-            dupl_percentage = ((duplicate_file[duplfile] / count) * 100)
-            if (dupl_percentage > 80):
-                print(filename, " id dup of ", duplfile)
-            else:
-                print(filename, " no duplicate")
-        else:
-            print(filename, " no duplicate")
+        if duplicate_file_dict:
+            duplicate_file = key_with_max_val(duplicate_file_dict)
+            duplicate_percentage = ((duplicate_file_dict[duplicate_file] / count) * 100)
+            if duplicate_percentage > 50:
+                file = file[:-5]
+                print(file, " is dup of ", duplicate_file)
+                src = analyzed_dir + file
+                tgt = duplicate_dir + file
+                if path.exists(src):
+                    rename(src, tgt)
+                # else:
+                #     print("File already moved")
 
 
 def mv_analyzed_file():
@@ -116,11 +123,12 @@ def mv_analyzed_file():
         tgt = analyzed_dir + filename
         if path.exists(src):
             rename(src, tgt)
-        else:
-            print("File already moved")
+        # else:
+        #     print("File already moved")
 
 
 if __name__ == '__main__':
     mv_analyzed_file()
     multiprocess_video_to_json()
-    # duplicate_analyzer()
+    mv_analyzed_file()
+    duplicate_analyzer()
