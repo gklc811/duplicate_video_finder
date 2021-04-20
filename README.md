@@ -7,3 +7,4 @@ Algorithm
   - Construct imagehash
   - Compare this imagehash for finding duplicates
 
+Commit 1
