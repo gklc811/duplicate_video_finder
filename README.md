@@ -8,3 +8,5 @@ Algorithm
   - Compare this imagehash for finding duplicates
 
 Commit 1
+Commit 2
+
